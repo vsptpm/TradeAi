@@ -74,7 +74,7 @@ export default function DashboardLayout() {
         </aside>
 
         {/* Center Canvas */}
-        <main className="overflow-y-auto p-4">
+        <main className="overflow-hidden p-4 flex flex-col min-h-0">
           <Outlet />
         </main>
 

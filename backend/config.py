@@ -12,5 +12,12 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60
 
+    # Upstox OAuth credentials
+    UPSTOX_API_KEY: str = ""
+    UPSTOX_API_SECRET: str = ""
+    UPSTOX_REDIRECT_URI: str = "http://localhost:8000/auth/upstox/callback"
+    # Paste a valid access token here to skip the OAuth flow during development
+    UPSTOX_ACCESS_TOKEN: str = ""
+
 
 settings = Settings()
