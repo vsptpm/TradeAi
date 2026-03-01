@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/auth/:path*", "destination": "http://140.245.198.169:8000/auth/:path*" },
     { "source": "/health", "destination": "http://140.245.198.169:8000/health" },
-    { "source": "/ws/:path*", "destination": "http://140.245.198.169:8000/ws/:path*" }
+    { "source": "/ws/:path*", "destination": "http://140.245.198.169:8000/ws/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
