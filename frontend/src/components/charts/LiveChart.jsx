@@ -40,11 +40,11 @@ const CANDLE_OPTIONS = {
   wickDownColor: '#ef4444',
 };
 
-const WS_URL = 'ws://localhost:8000/ws/live-feed';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/live-feed';
 const RECONNECT_DELAY_MS = 3000;
 
 export default function LiveChart() {
-  const { token } = useAuth();
+  const { token, logout } = useAuth();
   const containerRef = useRef(null);
   const [status, setStatus] = useState('connecting'); // connecting | live | error | no-token
 
@@ -83,7 +83,9 @@ export default function LiveChart() {
       setStatus('connecting');
       ws = new WebSocket(`${WS_URL}?token=${token}`);
 
+      let wasOpen = false;
       ws.onopen = () => {
+        wasOpen = true;
         if (!destroyed) setStatus('live');
       };
 
@@ -108,11 +110,15 @@ export default function LiveChart() {
         if (!destroyed) setStatus('error');
       };
 
-      ws.onclose = () => {
-        if (!destroyed) {
-          setStatus('connecting');
-          reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
+      ws.onclose = (e) => {
+        if (destroyed) return;
+        // If WS was never opened (rejected with 401), force re-login
+        if (!wasOpen) {
+          logout();
+          return;
         }
+        setStatus('connecting');
+        reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
       };
     }
 

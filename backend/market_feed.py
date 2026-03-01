@@ -26,6 +26,7 @@ import asyncio
 import logging
 import time
 import threading
+import webbrowser
 from dataclasses import dataclass
 from typing import Any
 
@@ -182,6 +183,7 @@ class UpstoxStreamer:
         self._accumulator = _CandleAccumulator()
         self._stop_event = threading.Event()
         self._reconnect_delay = RECONNECT_BASE_DELAY
+        self._browser_opened = False  # prevent opening multiple tabs
 
     # ------------------------------------------------------------------
     # Public interface
@@ -209,6 +211,7 @@ class UpstoxStreamer:
     def restart(self) -> None:
         """Stop the current connection and reconnect with the latest token."""
         logger.info("Restarting Upstox streamer with fresh token…")
+        self._browser_opened = False
         if self._streamer:
             try:
                 self._streamer.disconnect()
@@ -242,14 +245,22 @@ class UpstoxStreamer:
                     self._reconnect_delay * 2, RECONNECT_MAX_DELAY
                 )
 
+    def _open_login(self) -> None:
+        """Open the Upstox OAuth login page in the default browser (once)."""
+        if self._browser_opened:
+            return
+        self._browser_opened = True
+        login_url = "http://localhost:8000/auth/upstox/login"
+        logger.info("Opening Upstox login in browser: %s", login_url)
+        webbrowser.open(login_url)
+
     def _connect(self) -> None:
         access_token = settings.UPSTOX_ACCESS_TOKEN
         if not access_token:
-            logger.error(
-                "UPSTOX_ACCESS_TOKEN is not set. "
-                "Complete the OAuth flow and add the token to your .env file."
-            )
-            self._stop_event.wait(timeout=30)
+            logger.warning("UPSTOX_ACCESS_TOKEN is not set. Opening browser for OAuth…")
+            self._open_login()
+            # Wait for the callback to set the token
+            self._stop_event.wait(timeout=60)
             return
 
         configuration = upstox_client.Configuration()
@@ -263,24 +274,22 @@ class UpstoxStreamer:
         )
         self._streamer = streamer
 
-        def on_open(_msg: Any) -> None:
+        def on_open(*_args: Any) -> None:
             logger.info("Upstox WebSocket open. Subscribed to %s", INSTRUMENT_KEYS)
             self._reconnect_delay = RECONNECT_BASE_DELAY  # reset back-off
 
         def on_message(msg: Any) -> None:
             self._handle_message(msg)
 
-        def on_close(_msg: Any) -> None:
+        def on_close(*_args: Any) -> None:
             logger.info("Upstox WebSocket closed.")
             done_event.set()
 
         def on_error(err: Any) -> None:
             err_str = str(err)
             if "401" in err_str or "Unauthorized" in err_str:
-                logger.error(
-                    "Upstox token expired/invalid. "
-                    "Visit http://localhost:8000/auth/upstox/login to re-authenticate."
-                )
+                logger.warning("Upstox token expired. Opening browser for re-auth…")
+                self._open_login()
             else:
                 logger.error("Upstox WebSocket error: %s", err)
             done_event.set()

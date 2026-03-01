@@ -67,7 +67,5 @@ def upstox_callback(code: str):
         from market_feed import streamer
         streamer.restart()
 
-    return {
-        "access_token": access_token,
-        "message": "Token refreshed and streamer restarted.",
-    }
+    # Redirect to frontend dashboard with success indicator
+    return RedirectResponse(url="http://localhost:5173/dashboard?upstox_auth=success")
