@@ -81,7 +81,12 @@ export default function LiveChart() {
     function connect() {
       if (destroyed) return;
       setStatus('connecting');
-      ws = new WebSocket(`${WS_URL}?token=${token}`);
+      try {
+        ws = new WebSocket(`${WS_URL}?token=${token}`);
+      } catch {
+        setStatus('error');
+        return;
+      }
 
       let wasOpen = false;
       ws.onopen = () => {
